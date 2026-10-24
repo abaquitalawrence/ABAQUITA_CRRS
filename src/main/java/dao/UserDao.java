@@ -1,76 +1,125 @@
+
 package dao;
 
 import model.User;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.HexFormat;
+import java.sql.*;
 import java.util.Optional;
 
 public class UserDao {
 
-    /** Saves a new user with status PENDING. Returns false if the username is taken or on error. */
-    public boolean register(String username, String password, String role) {
-        String sql = "INSERT INTO users (username, password, roles, status) VALUES (?, ?, ?, 'PENDING')";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username);
-            ps.setString(2, hash(password));
-            ps.setString(3, role);
-            ps.executeUpdate();
-            return true;
-        } catch (SQLException e) {
-            return false; // UNIQUE constraint violation or other DB error
-        }
-    }
-
     public boolean usernameExists(String username) {
         String sql = "SELECT 1 FROM users WHERE username = ?";
+
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+
             ps.setString(1, username);
+
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
+
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(
+                    "Failed to check username.", e);
         }
     }
 
-    /** Returns the user if username and password match, otherwise empty. */
-    public Optional<User> login(String username, String password) {
-        String sql = "SELECT id, username, password, roles, status FROM users WHERE username = ? AND password = ?";
+    public boolean register(String username,
+                            String password,
+                            String role) {
+
+        if (username == null || username.isBlank()
+                || password == null || password.isEmpty()
+                || role == null
+                || !("ADMIN".equals(role)
+                || "STAFF".equals(role)
+                || "CUSTOMER".equals(role))) {
+            return false;
+        }
+
+        String sql = """
+                INSERT INTO users
+                (username, password, roles, status)
+                VALUES (?, ?, ?, 'PENDING')
+                """;
+
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, username.trim());
+            ps.setString(2, password);
+            ps.setString(3, role);
+
+            return ps.executeUpdate() == 1;
+
+        } catch (SQLException e) {
+            System.out.println(
+                    "Registration error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public Optional<User> login(String username,
+                                String password) {
+
+        String sql = """
+                SELECT id, username, password, roles, status
+                FROM users
+                WHERE username = ? AND password = ?
+                """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
             ps.setString(1, username);
-            ps.setString(2, hash(password));
+            ps.setString(2, password);
+
             try (ResultSet rs = ps.executeQuery()) {
+
                 if (rs.next()) {
-                    return Optional.of(new User(
+                    User user = new User(
                             rs.getInt("id"),
                             rs.getString("username"),
                             rs.getString("password"),
                             rs.getString("roles"),
-                            rs.getString("status")));
+                            rs.getString("status")
+                    );
+
+                    return Optional.of(user);
                 }
             }
+
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(
+                    "Login database error.", e);
         }
+
         return Optional.empty();
     }
 
-    private static String hash(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(md.digest(password.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
+    public boolean updateStatus(int userId, String status) {
+
+        if (!("ACTIVE".equals(status)
+                || "PENDING".equals(status)
+                || "INACTIVE".equals(status))) {
+            return false;
+        }
+
+        String sql = "UPDATE users SET status = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, status);
+            ps.setInt(2, userId);
+
+            return ps.executeUpdate() == 1;
+
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                    "Failed to update account status.", e);
         }
     }
 }

@@ -1,9 +1,24 @@
-import dao.DatabaseConnection;
-import ui.MainMenu;
+
+import dao.DatabaseInitializer;
+import ui.Authentication;
 
 public class Main {
+
     public static void main(String[] args) {
-        DatabaseConnection.initialize();
-        new MainMenu().start();
+
+        try {
+            // Step 1: Initialize the database.
+            DatabaseInitializer.initialize();
+
+            // Step 2: Start authentication.
+            new Authentication().start();
+
+        } catch (Exception e) {
+            System.err.println(
+                    "Application startup failed: "
+                            + e.getMessage()
+            );
+            e.printStackTrace();
+        }
     }
 }

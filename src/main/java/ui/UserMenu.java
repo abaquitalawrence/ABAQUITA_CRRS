@@ -1,10 +1,9 @@
+
 package ui;
 
 import model.User;
-
 import java.util.Scanner;
 
-/** Screen shown after a successful login. Add your rental/reservation features here. */
 public class UserMenu {
 
     private final User user;
@@ -15,20 +14,67 @@ public class UserMenu {
         this.scanner = scanner;
     }
 
-    public void show() {
-        System.out.printf("%nWelcome, %s (%s) - status: %s%n", user.username(), user.roles(), user.status());
+    public void showMenu() {
 
         while (true) {
-            System.out.println("\n--- User Menu ---");
-            // TODO: add your clothing rental / reservation options here
-            System.out.println("1. Logout");
-            System.out.print("Choose: ");
 
-            if (scanner.nextLine().trim().equals("1")) {
-                System.out.println("Logged out.");
-                return; // back to main menu
+            System.out.println(
+                    "\n=== " + user.getRole() + " MENU ===");
+
+            switch (user.getRole()) {
+
+                case "ADMIN" -> {
+                    System.out.println("1. Manage Users");
+                    System.out.println("2. Manage Clothing");
+                    System.out.println("3. View Reservations");
+                    System.out.println("4. Logout");
+                }
+
+                case "STAFF" -> {
+                    System.out.println("1. View Clothing");
+                    System.out.println("2. View Reservations");
+                    System.out.println("3. Logout");
+                }
+
+                case "CUSTOMER" -> {
+                    System.out.println("1. Browse Clothing");
+                    System.out.println("2. Reserve Clothing");
+                    System.out.println("3. My Reservations");
+                    System.out.println("4. Logout");
+                }
+
+                default -> {
+                    System.out.println("Invalid user role.");
+                    return;
+                }
             }
-            System.out.println("Invalid choice.");
+
+            System.out.print("Choose: ");
+            String choice = scanner.nextLine().trim();
+
+            int logoutOption =
+                    user.getRole().equals("STAFF") ? 3 : 4;
+
+            if (choice.equals(
+                    String.valueOf(logoutOption))) {
+                System.out.println("Logout successful!");
+                return;
+            }
+
+            boolean validOption = switch (user.getRole()) {
+                case "ADMIN", "CUSTOMER" ->
+                        choice.matches("[1-3]");
+                case "STAFF" -> choice.matches("[1-2]");
+                default -> false;
+            };
+
+            if (validOption) {
+                System.out.println(
+                        "This feature is not yet implemented.");
+            } else {
+                System.out.println(
+                        "Invalid choice. Please try again.");
+            }
         }
     }
 }

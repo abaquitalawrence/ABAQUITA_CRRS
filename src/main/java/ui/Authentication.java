@@ -18,8 +18,10 @@ public class Authentication {
     }
 
     public void start() {
+
         while (true) {
-            System.out.println("\n=== CLOTHING RENTAL & RESERVATION SYSTEM ===");
+            System.out.println(
+                    "\n=== CLOTHING RENTAL & RESERVATION SYSTEM ===");
             System.out.println("1. Register");
             System.out.println("2. Login");
             System.out.println("3. Exit");
@@ -40,6 +42,7 @@ public class Authentication {
     }
 
     private void register() {
+
         System.out.println("\n--- Register ---");
 
         System.out.print("Username: ");
@@ -77,23 +80,20 @@ public class Authentication {
                 case "2" -> role = "STAFF";
                 case "3" -> role = "CUSTOMER";
                 default -> System.out.println(
-                        "Invalid choice. Enter 1, 2, or 3."
-                );
+                        "Invalid choice. Enter 1, 2, or 3.");
             }
         }
 
         if (userDao.register(username, password, role)) {
             System.out.println(
-                    "Registration successful. Account status: PENDING."
-            );
+                    "Registration successful. Account status: PENDING.");
         } else {
-            System.out.println(
-                    "Registration failed. Please check the database."
-            );
+            System.out.println("Registration failed.");
         }
     }
 
     private void login() {
+
         System.out.println("\n--- Login ---");
 
         System.out.print("Username: ");
@@ -104,8 +104,7 @@ public class Authentication {
 
         if (username.isEmpty() || password.isEmpty()) {
             System.out.println(
-                    "Username and password cannot be empty."
-            );
+                    "Username and password cannot be empty.");
             return;
         }
 
@@ -118,24 +117,17 @@ public class Authentication {
 
         User user = result.get();
 
-        // Check account status before allowing login
-        if (!user.isActive()) {
+        if (!user.isApproved()) {
             System.out.println(
-                    "Login denied. Your account status is: "
-                            + user.getStatus()
-            );
+                    "Login denied. Account status: "
+                            + user.getStatus());
             System.out.println(
-                    "Only ACTIVE accounts can access the system."
-            );
+                    "Please wait for administrator approval.");
             return;
         }
 
-        // Successful login
         System.out.println("\nLogin successful!");
-        System.out.println("Welcome, " + user.getUsername() + "!");
-        System.out.println("Role: " + user.getRole());
 
-        // Open the main menu based on user role
         new MainMenu(user, scanner).start();
     }
 }

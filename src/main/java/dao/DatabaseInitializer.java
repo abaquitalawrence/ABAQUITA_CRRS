@@ -8,10 +8,10 @@ import java.sql.Statement;
 public final class DatabaseInitializer {
 
     private DatabaseInitializer() {
-        // Prevent object creation.
     }
 
     public static void initialize() {
+
         String createUsersTable = """
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,8 +23,7 @@ public final class DatabaseInitializer {
                 )
                 """;
 
-        try (Connection connection =
-                     DatabaseConnection.getConnection();
+        try (Connection connection = DatabaseConnection.getConnection();
              Statement statement = connection.createStatement()) {
 
             statement.executeUpdate(createUsersTable);

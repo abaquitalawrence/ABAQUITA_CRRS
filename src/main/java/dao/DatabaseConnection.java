@@ -11,7 +11,6 @@ public final class DatabaseConnection {
     private static final String URL = "jdbc:sqlite:clothing_rental.db";
 
     private DatabaseConnection() {
-        // Prevent object creation.
     }
 
     public static Connection getConnection() throws SQLException {
@@ -36,7 +35,6 @@ public final class DatabaseConnection {
             } catch (SQLException closeError) {
                 e.addSuppressed(closeError);
             }
-
             throw e;
         }
     }

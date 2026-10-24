@@ -3,11 +3,11 @@ package model;
 
 public class User {
 
-    private int id;
-    private String username;
-    private String password;
-    private String roles;
-    private String status;
+    private final int id;
+    private final String username;
+    private final String password;
+    private final String roles;
+    private final String status;
 
     public User(int id, String username, String password,
                 String roles, String status) {
@@ -42,7 +42,11 @@ public class User {
         return status;
     }
 
+    public boolean isApproved() {
+        return "APPROVED".equalsIgnoreCase(status);
+    }
+
     public boolean isActive() {
-        return "ACTIVE".equalsIgnoreCase(status);
+        return isApproved();
     }
 }

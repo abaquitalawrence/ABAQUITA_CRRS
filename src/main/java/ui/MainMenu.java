@@ -16,9 +16,9 @@ public class MainMenu {
 
     public void start() {
 
-        if (!user.isActive()) {
+        if (!user.isApproved()) {
             System.out.println(
-                    "Access denied. Account is not ACTIVE.");
+                    "Access denied. Account is not APPROVED.");
             return;
         }
 
@@ -29,14 +29,15 @@ public class MainMenu {
         System.out.println(
                 "====================================");
 
-        System.out.println(
-                "Welcome, " + user.getUsername() + "!");
-        System.out.println(
-                "Role: " + user.getRole());
-        System.out.println(
-                "Status: " + user.getStatus());
+        System.out.println("Welcome, " + user.getUsername() + "!");
+        System.out.println("Role: " + user.getRole());
+        System.out.println("Status: " + user.getStatus());
 
-        UserMenu menu = new UserMenu(user, scanner);
-        menu.showMenu();
+        switch (user.getRole()) {
+            case "ADMIN" -> new AdminMenu(scanner).start();
+            case "STAFF", "CUSTOMER" ->
+                    new UserMenu(user, scanner).showMenu();
+            default -> System.out.println("Unknown user role.");
+        }
     }
 }

@@ -4,6 +4,8 @@ package dao;
 import model.User;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class UserDao {
@@ -61,8 +63,7 @@ public class UserDao {
         }
     }
 
-    public Optional<User> login(String username,
-                                String password) {
+    public Optional<User> login(String username, String password) {
 
         String sql = """
                 SELECT id, username, password, roles, status
@@ -77,17 +78,8 @@ public class UserDao {
             ps.setString(2, password);
 
             try (ResultSet rs = ps.executeQuery()) {
-
                 if (rs.next()) {
-                    User user = new User(
-                            rs.getInt("id"),
-                            rs.getString("username"),
-                            rs.getString("password"),
-                            rs.getString("roles"),
-                            rs.getString("status")
-                    );
-
-                    return Optional.of(user);
+                    return Optional.of(mapUser(rs));
                 }
             }
 
@@ -99,27 +91,90 @@ public class UserDao {
         return Optional.empty();
     }
 
-    public boolean updateStatus(int userId, String status) {
+    // DELIVERABLE 5: GET ALL USERS
+    public List<User> getAllUsers() {
 
-        if (!("ACTIVE".equals(status)
-                || "PENDING".equals(status)
-                || "INACTIVE".equals(status))) {
-            return false;
+        List<User> users = new ArrayList<>();
+
+        String sql = """
+                SELECT id, username, password, roles, status
+                FROM users
+                ORDER BY id
+                """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                users.add(mapUser(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                    "Failed to retrieve users.", e);
         }
 
-        String sql = "UPDATE users SET status = ? WHERE id = ?";
+        return users;
+    }
+
+    // DELIVERABLE 5: GET PENDING USERS
+    public List<User> getPendingUsers() {
+
+        List<User> users = new ArrayList<>();
+
+        String sql = """
+                SELECT id, username, password, roles, status
+                FROM users
+                WHERE status = 'PENDING'
+                ORDER BY id
+                """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                users.add(mapUser(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                    "Failed to retrieve pending users.", e);
+        }
+
+        return users;
+    }
+
+    // DELIVERABLE 5: APPROVE USER
+    public boolean approveUser(int userId) {
+
+        String sql = """
+                UPDATE users
+                SET status = 'APPROVED'
+                WHERE id = ? AND status = 'PENDING'
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, status);
-            ps.setInt(2, userId);
+            ps.setInt(1, userId);
 
             return ps.executeUpdate() == 1;
 
         } catch (SQLException e) {
             throw new IllegalStateException(
-                    "Failed to update account status.", e);
+                    "Failed to approve user.", e);
         }
+    }
+
+    private User mapUser(ResultSet rs) throws SQLException {
+        return new User(
+                rs.getInt("id"),
+                rs.getString("username"),
+                rs.getString("password"),
+                rs.getString("roles"),
+                rs.getString("status")
+        );
     }
 }

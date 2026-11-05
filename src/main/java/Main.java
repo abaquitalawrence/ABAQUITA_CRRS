@@ -1,4 +1,3 @@
-
 import dao.DatabaseInitializer;
 import ui.Authentication;
 
@@ -8,12 +7,15 @@ public class Main {
 
         try {
             DatabaseInitializer.initialize();
-            new Authentication().start();
+
+            Authentication authentication = new Authentication();
+            authentication.start();
 
         } catch (Exception e) {
             System.err.println(
-                    "Application startup failed: "
-                            + e.getMessage());
+                    "Application startup failed: " + e.getMessage()
+            );
+
             e.printStackTrace();
         }
     }

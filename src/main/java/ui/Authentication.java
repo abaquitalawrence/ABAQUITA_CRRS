@@ -1,7 +1,7 @@
-
 package ui;
 
 import dao.UserDao;
+import dao.ActivityLogDao;
 import model.User;
 
 import java.util.Optional;
@@ -11,17 +11,23 @@ public class Authentication {
 
     private final Scanner scanner;
     private final UserDao userDao;
+    private final ActivityLogDao activityLogDao;
 
     public Authentication() {
+
         this.scanner = new Scanner(System.in);
         this.userDao = new UserDao();
+        this.activityLogDao = new ActivityLogDao();
     }
 
+    // START AUTHENTICATION MENU
     public void start() {
 
         while (true) {
+
             System.out.println(
                     "\n=== CLOTHING RENTAL & RESERVATION SYSTEM ===");
+
             System.out.println("1. Register");
             System.out.println("2. Login");
             System.out.println("3. Exit");
@@ -30,31 +36,43 @@ public class Authentication {
             String choice = scanner.nextLine().trim();
 
             switch (choice) {
+
                 case "1" -> register();
+
                 case "2" -> login();
+
                 case "3" -> {
+
                     System.out.println("Goodbye!");
                     return;
                 }
+
                 default -> System.out.println("Invalid choice.");
             }
         }
     }
 
+    // REGISTER USER
     private void register() {
 
-        System.out.println("\n--- Register ---");
+        System.out.println("\n--- REGISTER ---");
 
         System.out.print("Username: ");
         String username = scanner.nextLine().trim();
 
         if (username.isEmpty()) {
-            System.out.println("Username cannot be empty.");
+
+            System.out.println(
+                    "Username cannot be empty.");
+
             return;
         }
 
         if (userDao.usernameExists(username)) {
-            System.out.println("Username already taken.");
+
+            System.out.println(
+                    "Username already taken.");
+
             return;
         }
 
@@ -62,13 +80,17 @@ public class Authentication {
         String password = scanner.nextLine();
 
         if (password.isEmpty()) {
-            System.out.println("Password cannot be empty.");
+
+            System.out.println(
+                    "Password cannot be empty.");
+
             return;
         }
 
         String role = null;
 
         while (role == null) {
+
             System.out.println("\nSelect your role:");
             System.out.println("1. ADMIN");
             System.out.println("2. STAFF");
@@ -76,25 +98,33 @@ public class Authentication {
             System.out.print("Choose: ");
 
             switch (scanner.nextLine().trim()) {
+
                 case "1" -> role = "ADMIN";
+
                 case "2" -> role = "STAFF";
+
                 case "3" -> role = "CUSTOMER";
+
                 default -> System.out.println(
                         "Invalid choice. Enter 1, 2, or 3.");
             }
         }
 
         if (userDao.register(username, password, role)) {
+
             System.out.println(
                     "Registration successful. Account status: PENDING.");
+
         } else {
+
             System.out.println("Registration failed.");
         }
     }
 
+    // LOGIN USER
     private void login() {
 
-        System.out.println("\n--- Login ---");
+        System.out.println("\n--- LOGIN ---");
 
         System.out.print("Username: ");
         String username = scanner.nextLine().trim();
@@ -103,31 +133,50 @@ public class Authentication {
         String password = scanner.nextLine();
 
         if (username.isEmpty() || password.isEmpty()) {
+
             System.out.println(
                     "Username and password cannot be empty.");
+
             return;
         }
 
-        Optional<User> result = userDao.login(username, password);
+        Optional<User> result =
+                userDao.login(username, password);
 
         if (result.isEmpty()) {
-            System.out.println("Invalid username or password.");
+
+            System.out.println(
+                    "Invalid username or password.");
+
             return;
         }
 
         User user = result.get();
 
+        // CHECK ACCOUNT APPROVAL
         if (!user.isApproved()) {
+
             System.out.println(
                     "Login denied. Account status: "
                             + user.getStatus());
+
             System.out.println(
                     "Please wait for administrator approval.");
+
             return;
         }
 
+        // RECORD SUCCESSFUL LOGIN
+        activityLogDao.logAction(
+                user.getId(),
+                "LOGIN",
+                "User " + user.getUsername()
+                        + " successfully logged into the system."
+        );
+
         System.out.println("\nLogin successful!");
 
+        // OPEN USER MENU
         new MainMenu(user, scanner).start();
     }
 }

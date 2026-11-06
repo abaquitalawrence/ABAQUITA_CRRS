@@ -1,203 +1,235 @@
+
 package ui;
 
 import dao.UserDao;
 import dao.ActivityLogDao;
+import dao.ClothingItemDao;
+
 import model.User;
 import model.ActivityLog;
+import model.ClothingItem;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Scanner;
+import java.util.Locale;
 
 public class AdminMenu {
 
     private final Scanner scanner;
     private final UserDao userDao;
     private final ActivityLogDao activityLogDao;
+    private final ClothingItemDao clothingItemDao;
     private final User currentAdmin;
 
     public AdminMenu(User currentAdmin, Scanner scanner) {
-
         this.currentAdmin = currentAdmin;
         this.scanner = scanner;
+
         this.userDao = new UserDao();
         this.activityLogDao = new ActivityLogDao();
+        this.clothingItemDao = new ClothingItemDao();
     }
 
-    // MAIN ADMIN MENU
+    // ==============================
+    // ADMIN MAIN MENU
+    // ==============================
+
     public void start() {
 
-        while (true) {
+        boolean running = true;
 
-            System.out.println("\n=== ADMIN MENU ===");
-            System.out.println("1. View All System Users");
-            System.out.println("2. View Pending Registrations");
-            System.out.println("3. Approve User Account");
-            System.out.println("4. Update User Role and Status");
-            System.out.println("5. View System Audit Logs");
-            System.out.println("6. Logout");
-            System.out.print("Choose: ");
+        while (running) {
 
-            String choice = scanner.nextLine().trim();
+            System.out.println("\n========================================");
+            System.out.println("             ADMIN MENU");
+            System.out.println("========================================");
+            System.out.println("[1] VIEW ALL SYSTEM USERS");
+            System.out.println("[2] VIEW PENDING REGISTRATIONS");
+            System.out.println("[3] APPROVE USER ACCOUNT");
+            System.out.println("[4] UPDATE USER ROLE AND STATUS");
+            System.out.println("[5] VIEW SYSTEM AUDIT LOGS");
+            System.out.println("[6] MANAGE PRODUCTS");
+            System.out.println("[7] LOGOUT");
+            System.out.println("========================================");
+
+            int choice = readIntInput("Enter your choice: ");
 
             switch (choice) {
 
-                case "1" -> viewAllUsers();
+                case 1:
+                    viewAllUsers();
+                    break;
 
-                case "2" -> viewPendingUsers();
+                case 2:
+                    viewPendingUsers();
+                    break;
 
-                case "3" -> approveUser();
+                case 3:
+                    approveUser();
+                    break;
 
-                case "4" -> updateUserRoleAndStatus();
+                case 4:
+                    updateUserRoleAndStatus();
+                    break;
 
-                case "5" -> viewSystemAuditLogs();
+                case 5:
+                    viewSystemAuditLogs();
+                    break;
 
-                case "6" -> {
+                case 6:
+                    manageProducts();
+                    break;
 
+                case 7:
                     activityLogDao.logAction(
                             currentAdmin.getId(),
-                            "LOGOUT",
-                            "ADMIN user "
-                                    + currentAdmin.getUsername()
-                                    + " logged out."
+                            "ADMIN LOGOUT",
+                            "Administrator logged out."
                     );
 
-                    System.out.println("Logout successful!");
-                    return;
-                }
+                    System.out.println("\nYou have successfully logged out.");
+                    running = false;
+                    break;
 
-                default -> System.out.println(
-                        "Invalid choice. Please try again.");
+                default:
+                    System.out.println("\nInvalid choice. Please try again.");
             }
         }
     }
 
-    // VIEW ALL USERS
+    // ==============================
+    // VIEW ALL SYSTEM USERS
+    // ==============================
+
     private void viewAllUsers() {
 
-        System.out.println("\n--- ALL SYSTEM USERS ---");
+        System.out.println("\n========================================");
+        System.out.println("          ALL SYSTEM USERS");
+        System.out.println("========================================");
 
         List<User> users = userDao.getAllUsers();
 
         displayUserTable(users);
     }
 
-    // VIEW PENDING USERS
+    // ==============================
+    // VIEW PENDING REGISTRATIONS
+    // ==============================
+
     private void viewPendingUsers() {
 
-        System.out.println("\n--- PENDING REGISTRATIONS ---");
+        System.out.println("\n========================================");
+        System.out.println("        PENDING REGISTRATIONS");
+        System.out.println("========================================");
 
         List<User> users = userDao.getPendingUsers();
 
         displayUserTable(users);
     }
 
+    // ==============================
     // APPROVE USER ACCOUNT
-    private void approveUser() {
+    // ==============================
 
-        System.out.println("\n--- APPROVE USER ACCOUNT ---");
+    private void approveUser() {
 
         List<User> pendingUsers = userDao.getPendingUsers();
 
-        if (pendingUsers.isEmpty()) {
+        System.out.println("\n========================================");
+        System.out.println("        APPROVE USER ACCOUNT");
+        System.out.println("========================================");
 
+        if (pendingUsers.isEmpty()) {
             System.out.println("No pending registrations found.");
             return;
         }
 
         displayUserTable(pendingUsers);
 
-        int userId = readIntInput(
-                "Enter Target User ID (0 to cancel): ");
+        int targetUserId = readIntInput("\nEnter User ID to approve (0 to cancel): ");
 
-        if (userId == 0) {
-
+        if (targetUserId == 0) {
             System.out.println("Approval cancelled.");
             return;
         }
 
-        boolean exists = pendingUsers.stream()
-                .anyMatch(user -> user.getId() == userId);
+        boolean found = false;
 
-        if (!exists) {
+        for (User user : pendingUsers) {
+            if (user.getId() == targetUserId) {
+                found = true;
+                break;
+            }
+        }
 
-            System.out.println(
-                    "User ID not found in pending registrations.");
-
+        if (!found) {
+            System.out.println("Invalid User ID or account is not pending.");
             return;
         }
 
-        if (userDao.approveUser(
-                userId,
-                currentAdmin.getId())) {
+        boolean approved = userDao.approveUser(
+                targetUserId,
+                currentAdmin.getId()
+        );
 
-            System.out.println(
-                    "User account approved successfully!");
+        if (approved) {
+
+            activityLogDao.logAction(
+                    currentAdmin.getId(),
+                    "APPROVE USER",
+                    "Approved user account ID: " + targetUserId
+            );
+
+            System.out.println("User account successfully approved.");
 
         } else {
-
-            System.out.println(
-                    "Approval failed. Account may no longer be pending.");
+            System.out.println("Failed to approve user account.");
         }
     }
 
+    // ==============================
     // UPDATE USER ROLE AND STATUS
+    // ==============================
+
     private void updateUserRoleAndStatus() {
 
-        System.out.println("\n--- UPDATE USER ROLE AND STATUS ---");
+        System.out.println("\n========================================");
+        System.out.println("      UPDATE USER ROLE AND STATUS");
+        System.out.println("========================================");
 
         List<User> users = userDao.getAllUsers();
 
-        if (users.isEmpty()) {
+        displayUserTable(users);
 
-            System.out.println("No users found.");
+        if (users.isEmpty()) {
             return;
         }
 
-        displayUserTable(users);
-
-        int targetUserId = readIntInput(
-                "Enter Target User ID (0 to cancel): ");
+        int targetUserId = readIntInput("\nEnter User ID to update (0 to cancel): ");
 
         if (targetUserId == 0) {
-
             System.out.println("Update cancelled.");
             return;
         }
 
-        // SELF-EDIT RESTRICTION
-        if (targetUserId == currentAdmin.getId()) {
+        User selectedUser = null;
 
-            System.out.println(
-                    "WARNING: Modifying the currently active admin account is restricted.");
-
-            return;
+        for (User user : users) {
+            if (user.getId() == targetUserId) {
+                selectedUser = user;
+                break;
+            }
         }
 
-        boolean userExists = users.stream()
-                .anyMatch(user -> user.getId() == targetUserId);
-
-        if (!userExists) {
-
+        if (selectedUser == null) {
             System.out.println("User ID not found.");
             return;
         }
 
+        System.out.println("\nSelected Username: " + selectedUser.getUsername());
+
         String newRole = readValidRole();
-
-        if (newRole == null) {
-
-            System.out.println("Update cancelled.");
-            return;
-        }
-
         String newStatus = readValidStatus();
-
-        if (newStatus == null) {
-
-            System.out.println("Update cancelled.");
-            return;
-        }
 
         boolean updated = userDao.updateUserRoleAndStatus(
                 targetUserId,
@@ -208,105 +240,158 @@ public class AdminMenu {
 
         if (updated) {
 
-            System.out.println(
-                    "\nUser role and account status updated successfully!");
+            activityLogDao.logAction(
+                    currentAdmin.getId(),
+                    "UPDATE USER",
+                    "Updated user ID " + targetUserId
+                            + " to role " + newRole
+                            + " and status " + newStatus
+            );
 
-            System.out.println("Updated User ID: " + targetUserId);
-            System.out.println("New Role: " + newRole);
-            System.out.println("New Status: " + newStatus);
+            System.out.println("User role and status successfully updated.");
 
         } else {
-
-            System.out.println(
-                    "Update failed. Please check the user record.");
+            System.out.println("Failed to update user.");
         }
     }
 
-    // SYSTEM AUDIT LOG MENU
-    private void viewSystemAuditLogs() {
+    // ==============================
+    // USER ROLE VALIDATION
+    // ==============================
+
+    private String readValidRole() {
 
         while (true) {
 
-            System.out.println("\n=== SYSTEM AUDIT LOGS ===");
-            System.out.println("1. View All System Logs");
-            System.out.println("2. Filter Logs by User ID");
-            System.out.println("3. Back to Admin Menu");
-            System.out.print("Choose: ");
+            System.out.println("\nAvailable Roles:");
+            System.out.println("[1] ADMIN");
+            System.out.println("[2] STAFF");
+            System.out.println("[3] CUSTOMER");
 
-            String choice = scanner.nextLine().trim();
+            int choice = readIntInput("Select new role: ");
 
             switch (choice) {
+                case 1:
+                    return "ADMIN";
 
-                case "1" -> {
+                case 2:
+                    return "STAFF";
 
-                    System.out.println(
-                            "\n--- ALL SYSTEM ACTIVITY LOGS ---");
+                case 3:
+                    return "CUSTOMER";
 
-                    List<ActivityLog> logs =
-                            activityLogDao.getAllLogs();
-
-                    displayActivityLogs(logs);
-                }
-
-                case "2" -> filterLogsByUserId();
-
-                case "3" -> {
-                    return;
-                }
-
-                default -> System.out.println(
-                        "Invalid choice. Please try again.");
+                default:
+                    System.out.println("Invalid role. Please try again.");
             }
         }
     }
 
+    // ==============================
+    // USER STATUS VALIDATION
+    // ==============================
+
+    private String readValidStatus() {
+
+        while (true) {
+
+            System.out.println("\nAvailable Account Status:");
+            System.out.println("[1] APPROVED");
+            System.out.println("[2] PENDING");
+            System.out.println("[3] DISABLED");
+
+            int choice = readIntInput("Select new status: ");
+
+            switch (choice) {
+                case 1:
+                    return "APPROVED";
+
+                case 2:
+                    return "PENDING";
+
+                case 3:
+                    return "DISABLED";
+
+                default:
+                    System.out.println("Invalid status. Please try again.");
+            }
+        }
+    }
+
+    // ==============================
+    // SYSTEM AUDIT LOGS
+    // ==============================
+
+    private void viewSystemAuditLogs() {
+
+        boolean viewing = true;
+
+        while (viewing) {
+
+            System.out.println("\n========================================");
+            System.out.println("          SYSTEM AUDIT LOGS");
+            System.out.println("========================================");
+            System.out.println("[1] VIEW ALL ACTIVITY LOGS");
+            System.out.println("[2] FILTER LOGS BY USER ID");
+            System.out.println("[3] BACK TO ADMIN MENU");
+            System.out.println("========================================");
+
+            int choice = readIntInput("Enter your choice: ");
+
+            switch (choice) {
+
+                case 1:
+                    List<ActivityLog> allLogs = activityLogDao.getAllLogs();
+                    displayActivityLogs(allLogs);
+                    break;
+
+                case 2:
+                    filterLogsByUserId();
+                    break;
+
+                case 3:
+                    viewing = false;
+                    break;
+
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+
+    // ==============================
     // FILTER LOGS BY USER ID
+    // ==============================
+
     private void filterLogsByUserId() {
 
-        System.out.println("\n--- FILTER LOGS BY USER ID ---");
+        int userId = readIntInput("\nEnter User ID: ");
 
-        int userId = readIntInput(
-                "Enter User ID (0 to cancel): ");
-
-        if (userId == 0) {
-
-            System.out.println("Log filtering cancelled.");
-            return;
-        }
-
-        List<ActivityLog> logs =
-                activityLogDao.getLogsByUserId(userId);
-
-        System.out.println(
-                "\n--- ACTIVITY LOGS FOR USER ID "
-                        + userId + " ---");
+        List<ActivityLog> logs = activityLogDao.getLogsByUserId(userId);
 
         displayActivityLogs(logs);
     }
 
-    // DISPLAY ACTIVITY LOGS IN ALIGNED TABLE FORMAT
+    // ==============================
+    // DISPLAY ACTIVITY LOGS
+    // ==============================
+
     private void displayActivityLogs(List<ActivityLog> logs) {
 
-        if (logs.isEmpty()) {
-
-            System.out.println("No activity logs found.");
-            return;
-        }
-
-        String border = "-".repeat(104);
-
-        System.out.println(border);
-
+        System.out.println("\n====================================================================================================");
         System.out.printf(
                 "%-5s | %-8s | %-18s | %-35s | %-20s%n",
                 "LOG ID",
                 "USER ID",
-                "ACTION TYPE",
+                "ACTION",
                 "DESCRIPTION",
                 "TIMESTAMP"
         );
+        System.out.println("====================================================================================================");
 
-        System.out.println(border);
+        if (logs == null || logs.isEmpty()) {
+            System.out.println("No activity logs found.");
+            return;
+        }
 
         for (ActivityLog log : logs) {
 
@@ -320,11 +405,394 @@ public class AdminMenu {
             );
         }
 
-        System.out.println(border);
-        System.out.println("Total Records: " + logs.size());
+        System.out.println("====================================================================================================");
     }
 
-    // PREVENT LONG TEXT FROM BREAKING TABLE ALIGNMENT
+    // ==============================
+    // MANAGE PRODUCTS MENU
+    // ==============================
+
+    private void manageProducts() {
+
+        boolean managing = true;
+
+        while (managing) {
+
+            System.out.println("\n========================================");
+            System.out.println("            MANAGE PRODUCTS");
+            System.out.println("========================================");
+            System.out.println("[1] ADD PRODUCT");
+            System.out.println("[2] VIEW PRODUCTS");
+            System.out.println("[3] UPDATE PRODUCT");
+            System.out.println("[4] DELETE PRODUCT");
+            System.out.println("[5] BACK TO ADMIN MENU");
+            System.out.println("========================================");
+
+            int choice = readIntInput("Enter your choice: ");
+
+            switch (choice) {
+
+                case 1:
+                    createProduct();
+                    break;
+
+                case 2:
+                    viewProducts();
+                    break;
+
+                case 3:
+                    updateProduct();
+                    break;
+
+                case 4:
+                    deleteProduct();
+                    break;
+
+                case 5:
+                    managing = false;
+                    break;
+
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+
+    // ==============================
+    // ADD PRODUCT
+    // ==============================
+
+    private void createProduct() {
+
+        System.out.println("\n========================================");
+        System.out.println("              ADD PRODUCT");
+        System.out.println("========================================");
+
+        String name = readNonBlank("Enter clothing name: ");
+        String category = readNonBlank("Enter category: ");
+        String size = readNonBlank("Enter size: ");
+        String color = readNonBlank("Enter color: ");
+        double rentalPrice = readRentalPrice();
+        String availability = readAvailability();
+
+        boolean added = clothingItemDao.addClothingItem(
+                name,
+                category,
+                size,
+                color,
+                rentalPrice,
+                availability
+        );
+
+        if (added) {
+
+            activityLogDao.logAction(
+                    currentAdmin.getId(),
+                    "CREATE PRODUCT",
+                    "Added clothing product: " + name
+            );
+
+            System.out.println("\nProduct successfully added.");
+
+        } else {
+            System.out.println("\nFailed to add product.");
+        }
+    }
+
+    // ==============================
+    // VIEW PRODUCTS
+    // ==============================
+
+    private void viewProducts() {
+
+        System.out.println("\n========================================");
+        System.out.println("             CLOTHING PRODUCTS");
+        System.out.println("========================================");
+
+        List<ClothingItem> products = clothingItemDao.getAllClothingItems();
+
+        if (products == null || products.isEmpty()) {
+            System.out.println("No clothing products found.");
+            return;
+        }
+
+        System.out.println("================================================================================================");
+        System.out.printf(
+                "%-5s | %-20s | %-15s | %-8s | %-12s | %-12s | %-15s%n",
+                "ID",
+                "CLOTHING NAME",
+                "CATEGORY",
+                "SIZE",
+                "COLOR",
+                "PRICE",
+                "AVAILABILITY"
+        );
+        System.out.println("================================================================================================");
+
+        for (ClothingItem item : products) {
+
+            System.out.printf(
+                    "%-5d | %-20s | %-15s | %-8s | %-12s | %-12.2f | %-15s%n",
+                    item.getClothingId(),
+                    truncate(item.getClothingName(), 20),
+                    truncate(item.getCategory(), 15),
+                    truncate(item.getSize(), 8),
+                    truncate(item.getColor(), 12),
+                    item.getRentalPrice(),
+                    truncate(item.getAvailability(), 15)
+            );
+        }
+
+        System.out.println("================================================================================================");
+    }
+
+    // ==============================
+    // UPDATE PRODUCT
+    // ==============================
+
+    private void updateProduct() {
+
+        System.out.println("\n========================================");
+        System.out.println("             UPDATE PRODUCT");
+        System.out.println("========================================");
+
+        viewProducts();
+
+        int productId = readIntInput("\nEnter Product ID to update (0 to cancel): ");
+
+        if (productId == 0) {
+            System.out.println("Update cancelled.");
+            return;
+        }
+
+        ClothingItem existingProduct =
+                clothingItemDao.getClothingItemById(productId);
+
+        if (existingProduct == null) {
+            System.out.println("Product ID not found.");
+            return;
+        }
+
+        System.out.println("\nEnter the new product information.");
+
+        String name = readNonBlank("Enter new clothing name: ");
+        String category = readNonBlank("Enter new category: ");
+        String size = readNonBlank("Enter new size: ");
+        String color = readNonBlank("Enter new color: ");
+        double rentalPrice = readRentalPrice();
+        String availability = readAvailability();
+
+        boolean updated = clothingItemDao.updateClothingItem(
+                productId,
+                name,
+                category,
+                size,
+                color,
+                rentalPrice,
+                availability
+        );
+
+        if (updated) {
+
+            activityLogDao.logAction(
+                    currentAdmin.getId(),
+                    "UPDATE PRODUCT",
+                    "Updated clothing product ID: " + productId
+            );
+
+            System.out.println("\nProduct successfully updated.");
+
+        } else {
+            System.out.println("\nFailed to update product.");
+        }
+    }
+
+    // ==============================
+    // DELETE PRODUCT
+    // ==============================
+
+    private void deleteProduct() {
+
+        System.out.println("\n========================================");
+        System.out.println("             DELETE PRODUCT");
+        System.out.println("========================================");
+
+        viewProducts();
+
+        int productId = readIntInput("\nEnter Product ID to delete (0 to cancel): ");
+
+        if (productId == 0) {
+            System.out.println("Deletion cancelled.");
+            return;
+        }
+
+        ClothingItem existingProduct =
+                clothingItemDao.getClothingItemById(productId);
+
+        if (existingProduct == null) {
+            System.out.println("Product ID not found.");
+            return;
+        }
+
+        System.out.println(
+                "\nProduct selected: " + existingProduct.getClothingName()
+        );
+
+        System.out.print("Are you sure you want to delete this product? (Y/N): ");
+
+        String confirmation = scanner.nextLine().trim();
+
+        if (!confirmation.equalsIgnoreCase("Y")) {
+            System.out.println("Deletion cancelled.");
+            return;
+        }
+
+        boolean deleted = clothingItemDao.deleteClothingItem(productId);
+
+        if (deleted) {
+
+            activityLogDao.logAction(
+                    currentAdmin.getId(),
+                    "DELETE PRODUCT",
+                    "Deleted clothing product ID: " + productId
+            );
+
+            System.out.println("\nProduct successfully deleted.");
+
+        } else {
+            System.out.println(
+                    "\nFailed to delete product. It may be connected to another record."
+            );
+        }
+    }
+
+    // ==============================
+    // INPUT VALIDATION
+    // ==============================
+
+    private String readNonBlank(String message) {
+
+        while (true) {
+
+            System.out.print(message);
+
+            String value = scanner.nextLine().trim();
+
+            if (!value.isEmpty()) {
+                return value;
+            }
+
+            System.out.println("Input cannot be empty. Please try again.");
+        }
+    }
+
+    private double readRentalPrice() {
+
+        while (true) {
+
+            System.out.print("Enter rental price: ");
+
+            try {
+
+                double price = Double.parseDouble(
+                        scanner.nextLine().trim()
+                );
+
+                if (Double.isFinite(price) && price > 0) {
+                    return price;
+                }
+
+                System.out.println("Price must be greater than zero.");
+
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid price. Please enter a valid number.");
+            }
+        }
+    }
+
+    private String readAvailability() {
+
+        while (true) {
+
+            System.out.println("\nProduct Availability:");
+            System.out.println("[1] AVAILABLE");
+            System.out.println("[2] UNAVAILABLE");
+
+            int choice = readIntInput("Select availability: ");
+
+            switch (choice) {
+
+                case 1:
+                    return "AVAILABLE";
+
+                case 2:
+                    return "UNAVAILABLE";
+
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+
+    // ==============================
+    // DISPLAY USER TABLE
+    // ==============================
+
+    private void displayUserTable(List<User> users) {
+
+        if (users == null || users.isEmpty()) {
+            System.out.println("No user records found.");
+            return;
+        }
+
+        System.out.println("==============================================================");
+        System.out.printf(
+                "%-8s | %-20s | %-12s | %-12s%n",
+                "USER ID",
+                "USERNAME",
+                "ROLE",
+                "STATUS"
+        );
+        System.out.println("==============================================================");
+
+        for (User user : users) {
+
+            System.out.printf(
+                    "%-8d | %-20s | %-12s | %-12s%n",
+                    user.getId(),
+                    truncate(user.getUsername(), 20),
+                    truncate(user.getRole(), 12),
+                    truncate(user.getStatus(), 12)
+            );
+        }
+
+        System.out.println("==============================================================");
+    }
+
+    // ==============================
+    // INTEGER INPUT VALIDATION
+    // ==============================
+
+    private int readIntInput(String message) {
+
+        while (true) {
+
+            System.out.print(message);
+
+            try {
+
+                return Integer.parseInt(scanner.nextLine().trim());
+
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a whole number.");
+            }
+        }
+    }
+
+    // ==============================
+    // TEXT LENGTH CONTROL
+    // ==============================
+
     private String truncate(String value, int maxLength) {
 
         if (value == null) {
@@ -336,132 +804,5 @@ public class AdminMenu {
         }
 
         return value.substring(0, maxLength - 3) + "...";
-    }
-
-    // READ INTEGER INPUT
-    private int readIntInput(String prompt) {
-
-        while (true) {
-
-            System.out.print(prompt);
-
-            String input = scanner.nextLine().trim();
-
-            try {
-
-                int number = Integer.parseInt(input);
-
-                if (number < 0) {
-
-                    System.out.println(
-                            "Invalid input. Enter 0 or a positive number.");
-
-                    continue;
-                }
-
-                return number;
-
-            } catch (NumberFormatException e) {
-
-                System.out.println(
-                        "Invalid input. Please enter numbers only.");
-            }
-        }
-    }
-
-    // VALIDATE USER ROLE
-    private String readValidRole() {
-
-        while (true) {
-
-            System.out.println("\n--- SELECT NEW USER ROLE ---");
-            System.out.println("ADMIN");
-            System.out.println("STAFF");
-            System.out.println("CUSTOMER");
-            System.out.println("Enter 0 to cancel.");
-            System.out.print("Enter New Role: ");
-
-            String role = scanner.nextLine()
-                    .trim()
-                    .toUpperCase(Locale.ROOT);
-
-            if ("0".equals(role)) {
-                return null;
-            }
-
-            if (role.equals("ADMIN")
-                    || role.equals("STAFF")
-                    || role.equals("CUSTOMER")) {
-
-                return role;
-            }
-
-            System.out.println(
-                    "Invalid role. Enter ADMIN, STAFF, or CUSTOMER.");
-        }
-    }
-
-    // VALIDATE ACCOUNT STATUS
-    private String readValidStatus() {
-
-        while (true) {
-
-            System.out.println("\n--- SELECT NEW ACCOUNT STATUS ---");
-            System.out.println("APPROVED");
-            System.out.println("PENDING");
-            System.out.println("Enter 0 to cancel.");
-            System.out.print("Enter New Status: ");
-
-            String status = scanner.nextLine()
-                    .trim()
-                    .toUpperCase(Locale.ROOT);
-
-            if ("0".equals(status)) {
-                return null;
-            }
-
-            if (status.equals("APPROVED")
-                    || status.equals("PENDING")) {
-
-                return status;
-            }
-
-            System.out.println(
-                    "Invalid status. Enter APPROVED or PENDING.");
-        }
-    }
-
-    // DISPLAY USERS IN TABLE FORMAT
-    private void displayUserTable(List<User> users) {
-
-        if (users.isEmpty()) {
-
-            System.out.println("No users found.");
-            return;
-        }
-
-        String border = "-".repeat(52);
-
-        System.out.println(border);
-
-        System.out.printf(
-                "%-5s %-15s %-12s %-10s%n",
-                "ID", "USERNAME", "ROLE", "STATUS"
-        );
-
-        System.out.println(border);
-
-        for (User user : users) {
-
-            System.out.printf(
-                    "%-5d %-15s %-12s %-10s%n",
-                    user.getId(),
-                    user.getUsername(),
-                    user.getRole(),
-                    user.getStatus()
-            );
-        }
-
-        System.out.println(border);
     }
 }
